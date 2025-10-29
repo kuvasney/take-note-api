@@ -24,6 +24,18 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Root endpoint
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    message: 'Notes API is running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      notes: '/api/notes'
+    }
+  });
+});
+
 // Health check endpoint
 app.get('/health', (_req, res) => {
   res.status(200).json({ 
@@ -52,18 +64,19 @@ app.use(errorHandler);
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB');
-    
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 CORS enabled for: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
-    });
   })
   .catch((error) => {
     console.error('❌ MongoDB connection error:', error);
-    process.exit(1);
   });
+
+// Start server only if not in Vercel (for local development)
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌐 CORS enabled for: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
+  });
+}
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
