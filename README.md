@@ -185,6 +185,43 @@ src/
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## 🚀 Deploy no Vercel
+
+### Correções para TypeScript
+
+Este projeto foi otimizado para deployment no Vercel com as seguintes correções:
+
+- ✅ Tipos de retorno explícitos em todas as funções async
+- ✅ Tratamento correto de parâmetros não utilizados  
+- ✅ Validação de ObjectId do MongoDB
+- ✅ Middleware de tratamento de erros tipado
+- ✅ Configuração do Vercel (`vercel.json`)
+- ✅ Build limpo sem erros de TypeScript
+
+### Passos para Deploy
+
+1. **Conecte o repositório ao Vercel**
+   - Faça login no Vercel
+   - Importe o projeto do GitHub
+   - Configure o diretório raiz como `backend`
+
+2. **Configure as variáveis de ambiente no Vercel**
+   ```
+   NODE_ENV=production
+   MONGODB_URI=your_mongodb_atlas_connection_string
+   CORS_ORIGIN=https://your-frontend-domain.vercel.app
+   ```
+
+3. **MongoDB Atlas Setup**
+   - Crie um cluster no MongoDB Atlas
+   - Configure o IP whitelist (0.0.0.0/0 para Vercel)
+   - Obtenha a connection string
+   - Substitua `<password>` pela senha real
+
+4. **Build e Deploy**
+   - O Vercel executará automaticamente `npm run build`
+   - O projeto será servido a partir de `dist/server.js`
+
 ## License
 
 This project is licensed under the MIT License.

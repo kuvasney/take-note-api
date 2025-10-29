@@ -52,7 +52,7 @@ const NoteSchema = new Schema<INoteDocument>({
     updatedAt: 'dataUltimaEdicao' 
   },
   toJSON: {
-    transform: (doc, ret) => {
+    transform: (_doc, ret: any) => {
       ret.id = ret._id.toString();
       delete ret._id;
       delete ret.__v;
@@ -60,7 +60,7 @@ const NoteSchema = new Schema<INoteDocument>({
     }
   },
   toObject: {
-    transform: (doc, ret) => {
+    transform: (_doc, ret: any) => {
       ret.id = ret._id.toString();
       delete ret._id;
       delete ret.__v;

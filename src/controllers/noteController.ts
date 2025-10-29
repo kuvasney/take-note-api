@@ -4,7 +4,7 @@ import { CreateNoteDto, UpdateNoteDto } from '../types/note.js';
 import { SearchNotesSchema } from '../validation/noteSchemas.js';
 
 // GET /api/notes - List all notes with optional filtering
-export const getNotes = async (req: Request, res: Response, next: NextFunction) => {
+export const getNotes = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { archived = 'false', pinned, page = 1, limit = 50 } = req.query;
     
@@ -52,15 +52,16 @@ export const getNotes = async (req: Request, res: Response, next: NextFunction) 
 };
 
 // GET /api/notes/search - Search notes
-export const searchNotes = async (req: Request, res: Response, next: NextFunction) => {
+export const searchNotes = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const validation = SearchNotesSchema.safeParse(req.query);
     
     if (!validation.success) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Invalid search parameters',
         details: validation.error.errors
       });
+      return;
     }
     
     const { search, tags, archived = 'false', pinned, page = 1, limit = 50 } = validation.data;
@@ -129,17 +130,18 @@ export const searchNotes = async (req: Request, res: Response, next: NextFunctio
 };
 
 // GET /api/notes/:id - Get specific note
-export const getNoteById = async (req: Request, res: Response, next: NextFunction) => {
+export const getNoteById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     
     const note = await Note.findById(id).lean();
     
     if (!note) {
-      return res.status(404).json({
+      res.status(404).json({
         error: 'Note not found',
         message: `No note found with ID: ${id}`
       });
+      return;
     }
     
     res.json(note);
@@ -149,7 +151,7 @@ export const getNoteById = async (req: Request, res: Response, next: NextFunctio
 };
 
 // POST /api/notes - Create new note
-export const createNote = async (req: Request, res: Response, next: NextFunction) => {
+export const createNote = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const noteData: CreateNoteDto = req.body;
     
@@ -163,13 +165,15 @@ export const createNote = async (req: Request, res: Response, next: NextFunction
 };
 
 // PUT /api/notes/:id - Update existing note
-export const updateNote = async (req: Request, res: Response, next: NextFunction) => {
+export const updateNote = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     const updateData: UpdateNoteDto = req.body;
     
     // Remove id from update data if present
-    delete updateData.id;
+    if ('id' in updateData) {
+      delete (updateData as any).id;
+    }
     
     const updatedNote = await Note.findByIdAndUpdate(
       id,
@@ -182,10 +186,11 @@ export const updateNote = async (req: Request, res: Response, next: NextFunction
     );
     
     if (!updatedNote) {
-      return res.status(404).json({
+      res.status(404).json({
         error: 'Note not found',
         message: `No note found with ID: ${id}`
       });
+      return;
     }
     
     res.json(updatedNote);
@@ -195,17 +200,18 @@ export const updateNote = async (req: Request, res: Response, next: NextFunction
 };
 
 // PATCH /api/notes/:id/pin - Toggle pin status
-export const togglePin = async (req: Request, res: Response, next: NextFunction) => {
+export const togglePin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     
     const note = await Note.findById(id);
     
     if (!note) {
-      return res.status(404).json({
+      res.status(404).json({
         error: 'Note not found',
         message: `No note found with ID: ${id}`
       });
+      return;
     }
     
     note.pinned = !note.pinned;
@@ -220,17 +226,18 @@ export const togglePin = async (req: Request, res: Response, next: NextFunction)
 };
 
 // PATCH /api/notes/:id/archive - Toggle archive status
-export const toggleArchive = async (req: Request, res: Response, next: NextFunction) => {
+export const toggleArchive = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     
     const note = await Note.findById(id);
     
     if (!note) {
-      return res.status(404).json({
+      res.status(404).json({
         error: 'Note not found',
         message: `No note found with ID: ${id}`
       });
+      return;
     }
     
     note.archived = !note.archived;
@@ -245,17 +252,18 @@ export const toggleArchive = async (req: Request, res: Response, next: NextFunct
 };
 
 // DELETE /api/notes/:id - Delete note
-export const deleteNote = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteNote = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     
     const deletedNote = await Note.findByIdAndDelete(id).lean();
     
     if (!deletedNote) {
-      return res.status(404).json({
+      res.status(404).json({
         error: 'Note not found',
         message: `No note found with ID: ${id}`
       });
+      return;
     }
     
     res.json({
@@ -268,15 +276,16 @@ export const deleteNote = async (req: Request, res: Response, next: NextFunction
 };
 
 // POST /api/notes/reorder - Reorder notes
-export const reorderNotes = async (req: Request, res: Response, next: NextFunction) => {
+export const reorderNotes = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { noteIds } = req.body;
     
     if (!Array.isArray(noteIds)) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Invalid request',
         message: 'noteIds must be an array'
       });
+      return;
     }
     
     // This is a simplified implementation

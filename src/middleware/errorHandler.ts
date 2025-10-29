@@ -9,8 +9,8 @@ export const errorHandler = (
   error: CustomError,
   req: Request,
   res: Response,
-  next: NextFunction
-) => {
+  _next: NextFunction
+): void => {
   console.error('Error:', {
     message: error.message,
     stack: error.stack,
@@ -21,27 +21,30 @@ export const errorHandler = (
 
   // Mongoose validation error
   if (error.name === 'ValidationError') {
-    return res.status(400).json({
+    res.status(400).json({
       error: 'Validation Error',
       message: error.message,
       details: error
     });
+    return;
   }
 
   // Mongoose cast error (invalid ObjectId)
   if (error.name === 'CastError') {
-    return res.status(400).json({
+    res.status(400).json({
       error: 'Invalid ID format',
       message: 'The provided ID is not valid'
     });
+    return;
   }
 
   // MongoDB duplicate key error
   if (error.code === 11000) {
-    return res.status(409).json({
+    res.status(409).json({
       error: 'Duplicate Entry',
       message: 'A record with this information already exists'
     });
+    return;
   }
 
   // Default error response

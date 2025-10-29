@@ -19,4 +19,4 @@ export interface INote {
 }
 
 export type CreateNoteDto = Omit<INote, 'id' | 'dataCriacao' | 'dataUltimaEdicao'>;
-export type UpdateNoteDto = Partial<CreateNoteDto> & { id: string };
+export type UpdateNoteDto = Partial<CreateNoteDto> & { id?: string };
