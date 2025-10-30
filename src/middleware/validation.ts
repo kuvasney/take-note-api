@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
 import mongoose from 'mongoose';
+import { User } from '../models/User.js';
 
 export const validateRequest = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -43,4 +44,29 @@ export const validateObjectId = (req: Request, res: Response, next: NextFunction
   }
   
   next();
+};
+
+export const validateUniqueEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      next();
+      return;
+    }
+    
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    
+    if (existingUser) {
+      res.status(409).json({
+        error: 'Email already exists',
+        message: 'Um usuário com este email já existe'
+      });
+      return;
+    }
+    
+    next();
+  } catch (error) {
+    next(error);
+  }
 };

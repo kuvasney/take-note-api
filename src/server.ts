@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import notesRoutes from './routes/notes.js';
+import userRoutes from './routes/userRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 // Load environment variables
@@ -31,7 +32,8 @@ app.get('/', (_req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      notes: '/api/notes'
+      notes: '/api/notes',
+      users: '/api/users'
     }
   });
 });
@@ -47,6 +49,7 @@ app.get('/health', (_req, res) => {
 
 // API routes
 app.use('/api/notes', notesRoutes);
+app.use('/api/users', userRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
