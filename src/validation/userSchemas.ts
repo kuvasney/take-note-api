@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const CreateUserSchema = z.object({
-  nome: z.string()
-    .min(2, 'Nome deve ter pelo menos 2 caracteres')
-    .max(100, 'Nome deve ter no máximo 100 caracteres')
+  username: z.string()
+    .min(2, 'Nome de usuário deve ter pelo menos 2 caracteres')
+    .max(100, 'Nome de usuário deve ter no máximo 100 caracteres')
     .trim(),
   
   email: z.string()
@@ -14,10 +14,6 @@ export const CreateUserSchema = z.object({
   password: z.string()
     .min(6, 'Senha deve ter pelo menos 6 caracteres')
     .max(128, 'Senha deve ter no máximo 128 caracteres')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Senha deve conter pelo menos uma letra minúscula, uma maiúscula e um número'
-    )
 });
 
 export const LoginSchema = z.object({
@@ -31,19 +27,15 @@ export const LoginSchema = z.object({
 });
 
 export const UpdateUserSchema = z.object({
-  nome: z.string()
-    .min(2, 'Nome deve ter pelo menos 2 caracteres')
-    .max(100, 'Nome deve ter no máximo 100 caracteres')
+  username: z.string()
+    .min(2, 'Nome de usuário deve ter pelo menos 2 caracteres')
+    .max(100, 'Nome de usuário deve ter no máximo 100 caracteres')
     .trim()
     .optional(),
   
   password: z.string()
     .min(6, 'Senha deve ter pelo menos 6 caracteres')
     .max(128, 'Senha deve ter no máximo 128 caracteres')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Senha deve conter pelo menos uma letra minúscula, uma maiúscula e um número'
-    )
     .optional()
 }).refine(
   (data) => Object.values(data).some(value => value !== undefined),

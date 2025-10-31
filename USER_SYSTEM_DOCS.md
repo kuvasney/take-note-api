@@ -17,7 +17,7 @@ POST http://localhost:3001/api/users/register
 Content-Type: application/json
 
 {
-  "nome": "João Silva",
+  "username": "João Silva",
   "email": "joao@exemplo.com", 
   "password": "MinhaSenh@123"
 }
@@ -45,7 +45,7 @@ PUT http://localhost:3001/api/users/:id
 Content-Type: application/json
 
 {
-  "nome": "João Silva Santos",
+  "username": "João Silva Santos",
   "password": "NovaSen@456"
 }
 ```
@@ -101,7 +101,7 @@ GET http://localhost:3001/api/users?page=1&limit=10&search=joão
 curl -X POST http://localhost:3001/api/users/register \
   -H "Content-Type: application/json" \
   -d '{
-    "nome": "Test User",
+    "username": "Test User",
     "email": "test@example.com",
     "password": "Test@123"
   }'
@@ -124,7 +124,7 @@ POST http://localhost:3001/api/users/register
 Content-Type: application/json
 
 {
-  "nome": "Rafael Teste",
+  "username": "Rafael Teste",
   "email": "rafael@teste.com",
   "password": "Senha@123"
 }
@@ -145,7 +145,7 @@ Content-Type: application/json
 // Documento User no MongoDB
 {
   "_id": ObjectId,
-  "nome": "João Silva",
+  "username": "João Silva",
   "email": "joao@exemplo.com",
   "password": "$2a$12$...", // Hash bcrypt
   "dataCriacao": ISODate,

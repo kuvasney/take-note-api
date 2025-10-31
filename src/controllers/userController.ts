@@ -203,7 +203,7 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction):
     // Busca por nome ou email
     if (search && typeof search === 'string') {
       filter.$or = [
-        { nome: { $regex: search, $options: 'i' } },
+        { username: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
     }

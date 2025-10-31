@@ -42,7 +42,7 @@ GET    /api/users              # Listar usuários (autenticado)
 curl -X POST http://localhost:3001/api/users/register \
   -H "Content-Type: application/json" \
   -d '{
-    "nome": "João Silva",
+    "username": "João Silva",
     "email": "joao@teste.com",
     "password": "MinhaSenh@123"
   }'
@@ -54,7 +54,7 @@ curl -X POST http://localhost:3001/api/users/register \
   "message": "Usuário criado com sucesso",
   "user": {
     "id": "...",
-    "nome": "João Silva",
+    "username": "João Silva",
     "email": "joao@teste.com",
     "ativo": true,
     "emailVerificado": false

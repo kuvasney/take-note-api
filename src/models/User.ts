@@ -7,7 +7,7 @@ export interface IUserDocument extends Omit<IUser, 'id'>, Document {
 }
 
 const userSchema = new Schema<IUserDocument>({
-  nome: {
+  username: {
     type: String,
     required: [true, 'Nome é obrigatório'],
     trim: true,
