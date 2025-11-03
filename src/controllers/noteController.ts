@@ -8,7 +8,8 @@ export const getNotes = async (req: Request, res: Response, next: NextFunction):
   try {
     const { archived = 'false', pinned, page = 1, limit = 50 } = req.query;
     
-    const filter: any = {};
+    // Filtro base: apenas notas do usuário autenticado
+    const filter: any = { userId: req.user?.userId };
     
     // Filter by archived status
     if (archived === 'true') {
@@ -66,7 +67,8 @@ export const searchNotes = async (req: Request, res: Response, next: NextFunctio
     
     const { search, tags, archived = 'false', pinned, page = 1, limit = 50 } = validation.data;
     
-    const filter: any = {};
+    // Filtro base: apenas notas do usuário autenticado
+    const filter: any = { userId: req.user?.userId };
     
     // Text search
     if (search) {
@@ -134,7 +136,8 @@ export const getNoteById = async (req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
     
-    const note = await Note.findById(id).lean();
+    // Buscar apenas se a nota pertence ao usuário
+    const note = await Note.findOne({ _id: id, userId: req.user?.userId }).lean();
     
     if (!note) {
       res.status(404).json({
@@ -155,7 +158,11 @@ export const createNote = async (req: Request, res: Response, next: NextFunction
   try {
     const noteData: CreateNoteDto = req.body;
     
-    const note = new Note(noteData);
+    // Adicionar o userId do usuário autenticado
+    const note = new Note({
+      ...noteData,
+      userId: req.user?.userId
+    });
     const savedNote = await note.save();
     
     res.status(201).json(savedNote.toJSON());
@@ -175,8 +182,9 @@ export const updateNote = async (req: Request, res: Response, next: NextFunction
       delete (updateData as any).id;
     }
     
-    const updatedNote = await Note.findByIdAndUpdate(
-      id,
+    // Atualizar apenas se a nota pertence ao usuário
+    const updatedNote = await Note.findOneAndUpdate(
+      { _id: id, userId: req.user?.userId },
       { ...updateData, dataUltimaEdicao: new Date() },
       { 
         new: true, 
@@ -204,7 +212,8 @@ export const togglePin = async (req: Request, res: Response, next: NextFunction)
   try {
     const { id } = req.params;
     
-    const note = await Note.findById(id);
+    // Buscar apenas se a nota pertence ao usuário
+    const note = await Note.findOne({ _id: id, userId: req.user?.userId });
     
     if (!note) {
       res.status(404).json({
@@ -230,7 +239,8 @@ export const toggleArchive = async (req: Request, res: Response, next: NextFunct
   try {
     const { id } = req.params;
     
-    const note = await Note.findById(id);
+    // Buscar apenas se a nota pertence ao usuário
+    const note = await Note.findOne({ _id: id, userId: req.user?.userId });
     
     if (!note) {
       res.status(404).json({
@@ -256,7 +266,8 @@ export const deleteNote = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
     
-    const deletedNote = await Note.findByIdAndDelete(id).lean();
+    // Deletar apenas se a nota pertence ao usuário
+    const deletedNote = await Note.findOneAndDelete({ _id: id, userId: req.user?.userId }).lean();
     
     if (!deletedNote) {
       res.status(404).json({

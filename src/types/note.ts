@@ -6,6 +6,7 @@ export interface IReminder {
 
 export interface INote {
   id?: string;
+  userId: string;  // Dono da nota
   titulo: string;
   conteudo: string;
   dataCriacao?: Date;
@@ -18,5 +19,5 @@ export interface INote {
   colaboradores: string[];
 }
 
-export type CreateNoteDto = Omit<INote, 'id' | 'dataCriacao' | 'dataUltimaEdicao'>;
+export type CreateNoteDto = Omit<INote, 'id' | 'dataCriacao' | 'dataUltimaEdicao' | 'userId'>;
 export type UpdateNoteDto = Partial<CreateNoteDto> & { id?: string };

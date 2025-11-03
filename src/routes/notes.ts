@@ -2,8 +2,12 @@ import { Router } from 'express';
 import * as noteController from '../controllers/noteController.js';
 import { validateRequest, validateObjectId } from '../middleware/validation.js';
 import { CreateNoteSchema, UpdateNoteSchema } from '../validation/noteSchemas.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = Router();
+
+// Aplicar autenticação a todas as rotas de notas
+router.use(authenticateToken);
 
 // GET /api/notes - List all notes with optional filtering
 router.get('/', noteController.getNotes);
