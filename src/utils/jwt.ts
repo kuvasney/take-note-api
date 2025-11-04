@@ -18,7 +18,7 @@ export interface TokenResponse {
 // Configurações JWT
 const JWT_SECRET: string = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 const JWT_REFRESH_SECRET: string = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-change-in-production';
-const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '15m'; // Access token expira em 15 minutos
+const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d'; // Access token expira em 15 minutos
 const JWT_REFRESH_EXPIRES_IN: string = process.env.JWT_REFRESH_EXPIRES_IN || '7d'; // Refresh token expira em 7 dias
 
 /**

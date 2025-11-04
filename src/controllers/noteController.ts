@@ -29,9 +29,9 @@ export const getNotes = async (req: Request, res: Response, next: NextFunction):
     const limitNum = Math.min(100, Math.max(1, Number(limit)));
     const skip = (pageNum - 1) * limitNum;
     
-    // Sort: pinned notes first, then by last modified date
+    // Sort: pinned notes first, then by order (desc), then by last edit date
     const notes = await Note.find(filter)
-      .sort({ pinned: -1, dataUltimaEdicao: -1 })
+      .sort({ pinned: -1, order: -1, dataUltimaEdicao: -1 })
       .skip(skip)
       .limit(limitNum)
       .lean();
@@ -158,10 +158,19 @@ export const createNote = async (req: Request, res: Response, next: NextFunction
   try {
     const noteData: CreateNoteDto = req.body;
     
-    // Adicionar o userId do usuário autenticado
+    // Buscar o maior order do usuário para colocar no topo
+    const maxOrderNote = await Note.findOne({ userId: req.user?.userId })
+      .sort({ order: -1 })
+      .select('order')
+      .lean();
+    
+    const nextOrder = maxOrderNote?.order !== undefined ? maxOrderNote.order + 1 : 0;
+    
+    // Adicionar o userId e order do usuário autenticado
     const note = new Note({
       ...noteData,
-      userId: req.user?.userId
+      userId: req.user?.userId,
+      order: nextOrder
     });
     const savedNote = await note.save();
     
@@ -299,22 +308,24 @@ export const reorderNotes = async (req: Request, res: Response, next: NextFuncti
       return;
     }
     
-    // This is a simplified implementation
-    // In a real app, you might want to add a position/order field to the schema
-    // For now, we'll just update the dataUltimaEdicao to reflect the new order
+    const userId = req.user?.userId;
+    
+    // Update each note's order based on position in array
+    // First item (index 0) gets highest order number
     const updatePromises = noteIds.map((id: string, index: number) => 
-      Note.findByIdAndUpdate(
-        id,
-        { dataUltimaEdicao: new Date(Date.now() - (noteIds.length - index) * 1000) },
+      Note.findOneAndUpdate(
+        { _id: id, userId },
+        { order: noteIds.length - index - 1 },
         { new: true }
       )
     );
     
-    await Promise.all(updatePromises);
+    const updatedNotes = await Promise.all(updatePromises);
     
     res.json({
       message: 'Notes reordered successfully',
-      count: noteIds.length
+      count: noteIds.length,
+      notes: updatedNotes.filter(Boolean).map(n => n?.toJSON())
     });
   } catch (error) {
     next(error);

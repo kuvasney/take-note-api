@@ -17,6 +17,12 @@ const NoteSchema = new Schema<INoteDocument>({
     required: [true, 'ID do usuário é obrigatório'],
     index: true  // Índice para melhor performance nas queries
   },
+  order: {
+    type: Number,
+    required: true,
+    default: 0,
+    index: true  // Índice para ordenação rápida
+  },
   titulo: { 
     type: String, 
     required: [true, 'Título é obrigatório'],
@@ -82,8 +88,8 @@ NoteSchema.index({
 });
 
 // Index for better performance on common queries
-NoteSchema.index({ userId: 1, pinned: -1, dataUltimaEdicao: -1 });
-NoteSchema.index({ userId: 1, archived: 1, dataUltimaEdicao: -1 });
+NoteSchema.index({ userId: 1, pinned: -1, order: -1 });
+NoteSchema.index({ userId: 1, archived: 1, order: -1 });
 NoteSchema.index({ userId: 1, tags: 1 });
 
 export const Note = mongoose.model<INoteDocument>('Note', NoteSchema);
