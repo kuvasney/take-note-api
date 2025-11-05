@@ -15,6 +15,15 @@ router.get('/', noteController.getNotes);
 // GET /api/notes/search - Search notes
 router.get('/search', noteController.searchNotes);
 
+// POST /api/notes/reorder - Reorder notes (ANTES de rotas com :id)
+router.post('/reorder', noteController.reorderNotes);
+
+// PUT /api/notes/addCollaborator - Add collaborator to note (ANTES de rotas com :id)
+router.put('/addCollaborator', noteController.addCollaborator);
+
+// DELETE /api/notes/removeCollaborator - Remove collaborator from note (ANTES de rotas com :id)
+router.delete('/removeCollaborator', noteController.removeCollaborator);
+
 // GET /api/notes/:id - Get specific note
 router.get('/:id', validateObjectId, noteController.getNoteById);
 
@@ -32,8 +41,5 @@ router.patch('/:id/archive', validateObjectId, noteController.toggleArchive);
 
 // DELETE /api/notes/:id - Delete note
 router.delete('/:id', validateObjectId, noteController.deleteNote);
-
-// POST /api/notes/reorder - Reorder notes
-router.post('/reorder', noteController.reorderNotes);
 
 export default router;

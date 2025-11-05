@@ -2,14 +2,23 @@ import { Request, Response, NextFunction } from 'express';
 import { Note } from '../models/Note.js';
 import { CreateNoteDto, UpdateNoteDto } from '../types/note.js';
 import { SearchNotesSchema } from '../validation/noteSchemas.js';
+import { User } from '@/models/User.js';
 
 // GET /api/notes - List all notes with optional filtering
 export const getNotes = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { archived = 'false', pinned, page = 1, limit = 50 } = req.query;
     
-    // Filtro base: apenas notas do usuário autenticado
-    const filter: any = { userId: req.user?.userId };
+    const userEmail = req.user?.email; // Email do usuário autenticado
+    const userId = req.user?.userId;
+    
+    // Filtro base: notas que o usuário criou OU onde ele é colaborador
+    const filter: any = {
+      $or: [
+        { userId },                        // Notas que o usuário criou
+        { colaboradores: userEmail }       // Notas onde ele é colaborador
+      ]
+    };
     
     // Filter by archived status
     if (archived === 'true') {
@@ -135,9 +144,17 @@ export const searchNotes = async (req: Request, res: Response, next: NextFunctio
 export const getNoteById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
+    const userEmail = req.user?.email;
+    const userId = req.user?.userId;
     
-    // Buscar apenas se a nota pertence ao usuário
-    const note = await Note.findOne({ _id: id, userId: req.user?.userId }).lean();
+    // Buscar nota onde usuário é dono OU colaborador
+    const note = await Note.findOne({ 
+      _id: id,
+      $or: [
+        { userId },
+        { colaboradores: userEmail }
+      ]
+    }).lean();
     
     if (!note) {
       res.status(404).json({
@@ -185,15 +202,23 @@ export const updateNote = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
     const updateData: UpdateNoteDto = req.body;
+    const userEmail = req.user?.email;
+    const userId = req.user?.userId;
     
     // Remove id from update data if present
     if ('id' in updateData) {
       delete (updateData as any).id;
     }
     
-    // Atualizar apenas se a nota pertence ao usuário
+    // Atualizar se usuário é dono OU colaborador
     const updatedNote = await Note.findOneAndUpdate(
-      { _id: id, userId: req.user?.userId },
+      { 
+        _id: id,
+        $or: [
+          { userId },
+          { colaboradores: userEmail }
+        ]
+      },
       { ...updateData, dataUltimaEdicao: new Date() },
       { 
         new: true, 
@@ -274,14 +299,15 @@ export const toggleArchive = async (req: Request, res: Response, next: NextFunct
 export const deleteNote = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
+    const userId = req.user?.userId;
     
-    // Deletar apenas se a nota pertence ao usuário
-    const deletedNote = await Note.findOneAndDelete({ _id: id, userId: req.user?.userId }).lean();
+    // APENAS o dono pode deletar (colaboradores NÃO podem)
+    const deletedNote = await Note.findOneAndDelete({ _id: id, userId }).lean();
     
     if (!deletedNote) {
       res.status(404).json({
         error: 'Note not found',
-        message: `No note found with ID: ${id}`
+        message: `No note found with ID: ${id} or you are not the owner`
       });
       return;
     }
@@ -331,3 +357,140 @@ export const reorderNotes = async (req: Request, res: Response, next: NextFuncti
     next(error);
   }
 };
+
+export const addCollaborator = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { noteId, email } = req.body;
+
+    // Validar noteId
+    if (!noteId) {
+      res.status(400).json({
+        error: 'Missing noteId',
+        message: 'noteId is required in request body'
+      });
+      return;
+    }
+
+    // Validar formato do ObjectId
+    if (!noteId.match(/^[0-9a-fA-F]{24}$/)) {
+      res.status(400).json({
+        error: 'Invalid noteId format',
+        message: 'The provided noteId is not a valid MongoDB ObjectId'
+      });
+      return;
+    }
+
+    // Validar email
+    if (!email) {
+      res.status(400).json({
+        error: 'Missing email',
+        message: 'Collaborator email is required'
+      });
+      return;
+    }
+
+    // Buscar apenas se a nota pertence ao usuário (APENAS dono pode adicionar)
+    const note = await Note.findOne({ _id: noteId, userId: req.user?.userId });
+
+    const existentUser = await User.findOne({ email: email.toLowerCase() });
+
+    if (!existentUser) {
+      res.status(404).json({
+        error: 'User not found',
+        message: `No user found with email: ${email}`
+      });
+      return;
+    }
+
+    if (!note) {
+      res.status(404).json({
+        error: 'Note not found',
+        message: `No note found with ID: ${noteId} or you are not the owner`
+      });
+      return;
+    }
+
+    // Adicionar colaborador se não existir
+    if (!note.colaboradores.includes(email)) {
+      note.colaboradores.push(email);
+      note.dataUltimaEdicao = new Date();
+      const updatedNote = await note.save();
+      res.json({
+        message: 'Collaborator added successfully',
+        note: updatedNote.toJSON()
+      });
+    } else {
+      res.status(409).json({
+        error: 'Collaborator already added',
+        message: `Collaborator with email: ${email} is already added`
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Remove collaborator from note
+export const removeCollaborator = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { noteId, email } = req.body;
+
+    // Validar noteId
+    if (!noteId) {
+      res.status(400).json({
+        error: 'Missing noteId',
+        message: 'noteId is required in request body'
+      });
+      return;
+    }
+
+    // Validar formato do ObjectId
+    if (!noteId.match(/^[0-9a-fA-F]{24}$/)) {
+      res.status(400).json({
+        error: 'Invalid noteId format',
+        message: 'The provided noteId is not a valid MongoDB ObjectId'
+      });
+      return;
+    }
+
+    // Validar email
+    if (!email) {
+      res.status(400).json({
+        error: 'Missing email',
+        message: 'Collaborator email is required'
+      });
+      return;
+    }
+
+    // Buscar apenas se a nota pertence ao usuário (APENAS dono pode remover)
+    const note = await Note.findOne({ _id: noteId, userId: req.user?.userId });
+
+    if (!note) {
+      res.status(404).json({
+        error: 'Note not found',
+        message: `No note found with ID: ${noteId} or you are not the owner`
+      });
+      return;
+    }
+
+    // Remover colaborador
+    const index = note.colaboradores.indexOf(email);
+    if (index > -1) {
+      note.colaboradores.splice(index, 1);
+      note.dataUltimaEdicao = new Date();
+      const updatedNote = await note.save();
+      res.json({
+        message: 'Collaborator removed successfully',
+        note: updatedNote.toJSON()
+      });
+    } else {
+      res.status(404).json({
+        error: 'Collaborator not found',
+        message: `Collaborator with email: ${email} is not in this note`
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+  
