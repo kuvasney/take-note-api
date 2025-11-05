@@ -34,7 +34,6 @@ export const UpdateUserSchema = z.object({
     .optional(),
   
   password: z.string()
-    .min(6, 'Senha deve ter pelo menos 6 caracteres')
     .max(128, 'Senha deve ter no máximo 128 caracteres')
     .optional()
 }).refine(

@@ -129,6 +129,11 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     delete (sanitizedData as any).ativo;
     delete (sanitizedData as any).emailVerificado;
     
+    // Se password vier vazio ou undefined, remover do update
+    if (!sanitizedData.password || sanitizedData.password.trim() === '') {
+      delete (sanitizedData as any).password;
+    }
+    
     const updatedUser = await User.findByIdAndUpdate(
       id,
       { 
