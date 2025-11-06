@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Note } from '../models/Note.js';
 import { CreateNoteDto, UpdateNoteDto } from '../types/note.js';
 import { SearchNotesSchema } from '../validation/noteSchemas.js';
-import { User } from '@/models/User.js';
+import { User } from '../models/User.js';
 
 // GET /api/notes - List all notes with optional filtering
 export const getNotes = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
