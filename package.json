@@ -10,10 +10,7 @@
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts,.js",
     "lint:fix": "eslint src --fix --ext .ts,.js",
-    "test": "jest",
-    "migrate:encrypt": "tsx scripts/encrypt-existing-notes.ts",
-    "migrate:public-fields": "tsx scripts/add-public-fields.ts",
-    "migrate:share-tokens": "tsx scripts/fix-missing-share-tokens.ts",
+    "test": "jest"    
   },
   "keywords": [
     "notes",
