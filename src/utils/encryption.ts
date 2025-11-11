@@ -28,12 +28,25 @@ export function encrypt(text: string): string {
 export function decrypt(encryptedText: string): string {
   if (!encryptedText) return encryptedText;
   
+  // Se não parece estar criptografado, retorna como está
+  if (!isEncrypted(encryptedText)) {
+    return encryptedText;
+  }
+  
   try {
     const decrypted = CryptoJS.AES.decrypt(encryptedText, ENCRYPTION_KEY);
-    return decrypted.toString(CryptoJS.enc.Utf8);
+    const text = decrypted.toString(CryptoJS.enc.Utf8);
+    
+    // Se retornou string vazia, pode ser chave errada ou texto corrompido
+    if (!text) {
+      console.error('Descriptografia resultou em string vazia - chave incorreta?');
+      return encryptedText; // Retorna o original ao invés de string vazia
+    }
+    
+    return text;
   } catch (error) {
     console.error('Erro ao descriptografar:', error);
-    throw new Error('Falha na descriptografia');
+    return encryptedText; // Retorna o original ao invés de lançar erro
   }
 }
 

@@ -125,7 +125,8 @@ NoteSchema.post('find', function(docs: any[]) {
         try {
           doc.conteudo = decrypt(doc.conteudo);
         } catch (error) {
-          console.error('Erro ao descriptografar conteúdo:', error);
+          console.error('Erro ao descriptografar:', error);
+          // Mantém o conteúdo original se falhar (pode estar já descriptografado)
         }
       }
     });
@@ -137,7 +138,8 @@ NoteSchema.post('findOne', function(doc: any) {
     try {
       doc.conteudo = decrypt(doc.conteudo);
     } catch (error) {
-      console.error('Erro ao descriptografar conteúdo:', error);
+      console.error('Erro ao descriptografar:', error);
+      // Mantém o conteúdo original se falhar
     }
   }
 });
@@ -151,7 +153,8 @@ NoteSchema.post('save', function(doc: any) {
       const decrypted = decrypt(doc.conteudo);
       doc.conteudo = decrypted;
     } catch (error) {
-      console.error('Erro ao descriptografar conteúdo:', error);
+      console.error('Erro ao descriptografar:', error);
+      // Mantém o conteúdo original se falhar
     }
   }
 });

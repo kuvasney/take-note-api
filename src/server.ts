@@ -102,14 +102,48 @@ app.use('*', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Database connection
-mongoose.connect(MONGODB_URI)
-  .then(() => {
+// Database connection with serverless optimization
+let isConnected = false;
+
+async function connectToDatabase() {
+  if (isConnected) {
+    console.log('♻️  Using existing MongoDB connection');
+    return;
+  }
+
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // Timeout após 5s (padrão é 30s)
+      socketTimeoutMS: 45000, // Timeout de socket
+    });
+    
+    isConnected = true;
     console.log('✅ Connected to MongoDB');
-  })
-  .catch((error) => {
+  } catch (error) {
     console.error('❌ MongoDB connection error:', error);
-  });
+    isConnected = false;
+    throw error;
+  }
+}
+
+// Conectar imediatamente para ambientes tradicionais
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  connectToDatabase();
+}
+
+// Middleware para garantir conexão em serverless (Vercel)
+app.use(async (_req, res, next) => {
+  try {
+    await connectToDatabase();
+    next();
+  } catch (error) {
+    console.error('Failed to connect to database:', error);
+    res.status(503).json({
+      error: 'Service Unavailable',
+      message: 'Não foi possível conectar ao banco de dados'
+    });
+  }
+});
 
 // Start server only if not in Vercel (for local development)
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
