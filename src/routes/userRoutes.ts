@@ -6,7 +6,9 @@ import {
   updateUser, 
   deactivateUser,
   getUsers,
-  refreshTokens
+  refreshTokens,
+  requestPasswordReset,
+  resetPassword
 } from '../controllers/userController.js';
 import { validateRequest, validateObjectId, validateUniqueEmail } from '../middleware/validation.js';
 import { CreateUserSchema, LoginSchema, UpdateUserSchema } from '../validation/userSchemas.js';
@@ -30,6 +32,16 @@ userRoutes.post('/login',
 // POST /api/users/refresh - Renovar tokens
 userRoutes.post('/refresh',
   refreshTokens
+);
+
+// POST /api/users/forgot-password - Solicitar recuperação de senha
+userRoutes.post('/forgot-password',
+  requestPasswordReset
+);
+
+// POST /api/users/reset-password - Resetar senha com token
+userRoutes.post('/reset-password',
+  resetPassword
 );
 
 // GET /api/users/:id/profile - Obter perfil do usuário (protegida)

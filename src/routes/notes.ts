@@ -6,7 +6,11 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = Router();
 
-// Aplicar autenticação a todas as rotas de notas
+// Rotas PÚBLICAS (sem autenticação obrigatória)
+// GET /api/notes/public/:shareToken - Acesso público via token
+router.get('/public/:shareToken', noteController.getPublicNoteByToken);
+
+// Aplicar autenticação a todas as outras rotas de notas
 router.use(authenticateToken);
 
 // GET /api/notes - List all notes with optional filtering
@@ -38,6 +42,12 @@ router.patch('/:id/pin', validateObjectId, noteController.togglePin);
 
 // PATCH /api/notes/:id/archive - Toggle archive status
 router.patch('/:id/archive', validateObjectId, noteController.toggleArchive);
+
+// PATCH /api/notes/:id/toggle-public - Toggle public status
+router.patch('/:id/toggle-public', validateObjectId, noteController.togglePublicNote);
+
+// POST /api/notes/:id/regenerate-share-token - Regenerar token de compartilhamento
+router.post('/:id/regenerate-share-token', validateObjectId, noteController.regenerateShareToken);
 
 // DELETE /api/notes/:id - Delete note
 router.delete('/:id', validateObjectId, noteController.deleteNote);

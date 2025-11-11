@@ -18,6 +18,8 @@ export interface INote {
   pinned: boolean;
   lembretes: IReminder[];
   colaboradores: string[];
+  isPublic: boolean;      // Se a nota é pública
+  shareToken?: string;    // Token único para compartilhamento seguro
 }
 
 export type CreateNoteDto = Omit<INote, 'id' | 'dataCriacao' | 'dataUltimaEdicao' | 'userId' | 'order'>;

@@ -3,6 +3,7 @@ import { Note } from '../models/Note.js';
 import { CreateNoteDto, UpdateNoteDto } from '../types/note.js';
 import { SearchNotesSchema } from '../validation/noteSchemas.js';
 import { User } from '../models/User.js';
+import { sendCollaboratorAddedEmail } from '../services/emailService.js';
 
 // GET /api/notes - List all notes with optional filtering
 export const getNotes = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -141,18 +142,20 @@ export const searchNotes = async (req: Request, res: Response, next: NextFunctio
 };
 
 // GET /api/notes/:id - Get specific note
+// GET /api/notes/:id - Get single note (requer autenticação ou nota pública)
 export const getNoteById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     const userEmail = req.user?.email;
     const userId = req.user?.userId;
     
-    // Buscar nota onde usuário é dono OU colaborador
+    // Primeiro tenta buscar nota onde usuário tem acesso OU nota é pública
     const note = await Note.findOne({ 
       _id: id,
       $or: [
         { userId },
-        { colaboradores: userEmail }
+        { colaboradores: userEmail },
+        { isPublic: true }  // Permite acesso se nota for pública
       ]
     }).lean();
     
@@ -183,11 +186,15 @@ export const createNote = async (req: Request, res: Response, next: NextFunction
     
     const nextOrder = maxOrderNote?.order !== undefined ? maxOrderNote.order + 1 : 0;
     
-    // Adicionar o userId e order do usuário autenticado
+    // Se a nota será pública, gerar shareToken
+    const shareToken = noteData.isPublic ? (Note as any).generateShareToken() : undefined;
+    
+    // Adicionar o userId, order e shareToken (se público)
     const note = new Note({
       ...noteData,
       userId: req.user?.userId,
-      order: nextOrder
+      order: nextOrder,
+      shareToken
     });
     const savedNote = await note.save();
     
@@ -415,6 +422,23 @@ export const addCollaborator = async (req: Request, res: Response, next: NextFun
       note.colaboradores.push(email);
       note.dataUltimaEdicao = new Date();
       const updatedNote = await note.save();
+      
+      // Enviar email para o colaborador
+      try {
+        // Buscar dados do dono da nota para incluir o nome no email
+        const owner = await User.findById(req.user?.userId);
+        
+        await sendCollaboratorAddedEmail({
+          collaboratorEmail: email,
+          ownerName: owner?.username || 'Um usuário',
+          noteTitle: note.titulo,
+          noteId: String(note._id)
+        });
+      } catch (emailError) {
+        console.error('Erro ao enviar email de colaboração:', emailError);
+        // Continua mesmo se o email falhar
+      }
+      
       res.json({
         message: 'Collaborator added successfully',
         note: updatedNote.toJSON()
@@ -489,6 +513,118 @@ export const removeCollaborator = async (req: Request, res: Response, next: Next
         message: `Collaborator with email: ${email} is not in this note`
       });
     }
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/notes/public/:shareToken - Acesso público via token (SEM autenticação)
+export const getPublicNoteByToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { shareToken } = req.params;
+    
+    // Buscar nota pública pelo shareToken
+    const note = await Note.findOne({ 
+      shareToken,
+      isPublic: true  // Deve ser pública
+    }).lean();
+    
+    if (!note) {
+      res.status(404).json({
+        error: 'Note not found',
+        message: 'Public note not found or link is invalid'
+      });
+      return;
+    }
+    
+    // Retornar apenas campos públicos (sem dados sensíveis)
+    const publicNote = {
+      id: note.id,
+      titulo: note.titulo,
+      conteudo: note.conteudo,
+      cor: note.cor,
+      tags: note.tags,
+      dataCriacao: note.dataCriacao,
+      dataUltimaEdicao: note.dataUltimaEdicao,
+      isPublic: note.isPublic,
+      shareToken: note.shareToken
+    };
+    
+    res.json(publicNote);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/notes/:id/toggle-public - Alternar status público da nota
+export const togglePublicNote = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+    
+    // Buscar nota (apenas dono pode tornar pública)
+    const note = await Note.findOne({ _id: id, userId });
+    
+    if (!note) {
+      res.status(404).json({
+        error: 'Note not found',
+        message: 'Note not found or you are not the owner'
+      });
+      return;
+    }
+    
+    // Alternar status público
+    note.isPublic = !note.isPublic;
+    
+    // Se estiver tornando pública e não tiver shareToken, gerar um
+    if (note.isPublic && !note.shareToken) {
+      note.shareToken = (Note as any).generateShareToken();
+    }
+    
+    note.dataUltimaEdicao = new Date();
+    const updatedNote = await note.save();
+    
+    res.json({
+      message: note.isPublic ? 'Note is now public' : 'Note is now private',
+      note: updatedNote.toJSON(),
+      shareUrl: note.isPublic && note.shareToken 
+        ? `${process.env.FRONTEND_URL || 'http://localhost:5173'}/public-note/${note.shareToken}`
+        : null
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/notes/:id/regenerate-share-token - Regenerar token de compartilhamento
+export const regenerateShareToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+    
+    // Buscar nota (apenas dono pode regenerar)
+    const note = await Note.findOne({ _id: id, userId });
+    
+    if (!note) {
+      res.status(404).json({
+        error: 'Note not found',
+        message: 'Note not found or you are not the owner'
+      });
+      return;
+    }
+    
+    // Gerar novo token
+    note.shareToken = (Note as any).generateShareToken();
+    note.dataUltimaEdicao = new Date();
+    const updatedNote = await note.save();
+    
+    res.json({
+      message: 'Share token regenerated successfully',
+      note: updatedNote.toJSON(),
+      shareUrl: note.isPublic && note.shareToken 
+        ? `${process.env.FRONTEND_URL || 'http://localhost:5173'}/public/${note.shareToken}`
+        : null
+    });
   } catch (error) {
     next(error);
   }

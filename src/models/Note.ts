@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { INote, IReminder } from '../types/note.js';
+import crypto from 'crypto';
+import { encrypt, decrypt } from '../utils/encryption.js';
 
 export interface INoteDocument extends INote, Document {
   id: string;
@@ -56,7 +58,18 @@ const NoteSchema = new Schema<INoteDocument>({
   colaboradores: [{ 
     type: String, 
     trim: true 
-  }]
+  }],
+  isPublic: {
+    type: Boolean,
+    default: false,
+    index: true  // Índice para queries de notas públicas
+  },
+  shareToken: {
+    type: String,
+    unique: true,
+    sparse: true,  // Permite múltiplos documentos com null
+    index: true    // Índice para busca rápida por token
+  }
 }, {
   timestamps: { 
     createdAt: 'dataCriacao', 
@@ -91,5 +104,61 @@ NoteSchema.index({
 NoteSchema.index({ userId: 1, pinned: -1, order: -1 });
 NoteSchema.index({ userId: 1, archived: 1, order: -1 });
 NoteSchema.index({ userId: 1, tags: 1 });
+
+// Hook: Criptografar conteúdo antes de salvar
+NoteSchema.pre('save', function(next) {
+  if (this.isModified('conteudo') && this.conteudo) {
+    try {
+      this.conteudo = encrypt(this.conteudo);
+    } catch (error) {
+      console.error('Erro ao criptografar conteúdo:', error);
+    }
+  }
+  next();
+});
+
+// Hook: Descriptografar conteúdo após buscar (para findOne, findById)
+NoteSchema.post('find', function(docs: any[]) {
+  if (Array.isArray(docs)) {
+    docs.forEach(doc => {
+      if (doc.conteudo) {
+        try {
+          doc.conteudo = decrypt(doc.conteudo);
+        } catch (error) {
+          console.error('Erro ao descriptografar conteúdo:', error);
+        }
+      }
+    });
+  }
+});
+
+NoteSchema.post('findOne', function(doc: any) {
+  if (doc && doc.conteudo) {
+    try {
+      doc.conteudo = decrypt(doc.conteudo);
+    } catch (error) {
+      console.error('Erro ao descriptografar conteúdo:', error);
+    }
+  }
+});
+
+// Hook: Descriptografar após save
+NoteSchema.post('save', function(doc: any) {
+  if (doc && doc.conteudo) {
+    try {
+      // Descriptografar temporariamente para retornar ao cliente
+      // O valor no DB permanece criptografado
+      const decrypted = decrypt(doc.conteudo);
+      doc.conteudo = decrypted;
+    } catch (error) {
+      console.error('Erro ao descriptografar conteúdo:', error);
+    }
+  }
+});
+
+// Método estático para gerar shareToken único
+NoteSchema.statics.generateShareToken = function(): string {
+  return crypto.randomBytes(16).toString('hex'); // 32 caracteres
+};
 
 export const Note = mongoose.model<INoteDocument>('Note', NoteSchema);

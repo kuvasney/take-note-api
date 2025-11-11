@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../models/User.js';
+import { PasswordResetToken } from '../models/PasswordResetToken.js';
 import { CreateUserDto, UpdateUserDto, LoginDto } from '../types/user.js';
 import { generateTokens, verifyRefreshToken } from '../utils/jwt.js';
+import { sendPasswordResetEmail, sendPasswordChangedEmail } from '../services/emailService.js';
 
 // POST /api/users/register - Criar nova conta de usuário
 export const registerUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -134,25 +136,52 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
       delete (sanitizedData as any).password;
     }
     
-    const updatedUser = await User.findByIdAndUpdate(
-      id,
-      { 
-        ...sanitizedData,
-        dataUltimaAtualizacao: new Date()
-      },
-      { 
-        new: true, 
-        runValidators: true,
-        lean: true
-      }
-    );
+    // Se estiver alterando a senha, usar save() para disparar o hook de hash
+    // Se não, usar findByIdAndUpdate para melhor performance
+    let updatedUser;
     
-    if (!updatedUser) {
-      res.status(404).json({
-        error: 'User not found',
-        message: 'Usuário não encontrado'
-      });
-      return;
+    if (sanitizedData.password) {
+      // Buscar usuário
+      const user = await User.findById(id);
+      
+      if (!user) {
+        res.status(404).json({
+          error: 'User not found',
+          message: 'Usuário não encontrado'
+        });
+        return;
+      }
+      
+      // Atualizar campos (incluindo senha)
+      Object.assign(user, sanitizedData);
+      user.dataUltimaAtualizacao = new Date();
+      
+      // Save vai disparar o hook pre('save') que faz o hash da senha
+      await user.save();
+      
+      updatedUser = user.toJSON();
+    } else {
+      // Sem mudança de senha, usar findByIdAndUpdate
+      updatedUser = await User.findByIdAndUpdate(
+        id,
+        { 
+          ...sanitizedData,
+          dataUltimaAtualizacao: new Date()
+        },
+        { 
+          new: true, 
+          runValidators: true,
+          lean: true
+        }
+      );
+      
+      if (!updatedUser) {
+        res.status(404).json({
+          error: 'User not found',
+          message: 'Usuário não encontrado'
+        });
+        return;
+      }
     }
     
     res.json({
@@ -279,6 +308,158 @@ export const refreshTokens = async (req: Request, res: Response, next: NextFunct
         return;
       }
     }
+    next(error);
+  }
+};
+
+// POST /api/users/forgot-password - Solicitar recuperação de senha
+export const requestPasswordReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      res.status(400).json({
+        error: 'Email required',
+        message: 'Email é obrigatório'
+      });
+      return;
+    }
+    
+    // Buscar usuário
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    // Por segurança, sempre retorna sucesso mesmo se email não existir
+    // Isso previne que atacantes descubram quais emails estão cadastrados
+    if (!user) {
+      res.json({
+        message: 'Se o email existir em nossa base, você receberá instruções para recuperação de senha'
+      });
+      return;
+    }
+    
+    // Verificar se usuário está ativo
+    if (!user.ativo) {
+      res.json({
+        message: 'Se o email existir em nossa base, você receberá instruções para recuperação de senha'
+      });
+      return;
+    }
+    
+    // Invalidar tokens anteriores do usuário
+    await PasswordResetToken.updateMany(
+      { userId: user._id, used: false },
+      { used: true }
+    );
+    
+    // Gerar novo token
+    const resetToken = (PasswordResetToken as any).generateToken();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+    
+    // Salvar token no banco
+    await PasswordResetToken.create({
+      userId: user._id,
+      token: resetToken,
+      expiresAt,
+      used: false
+    });
+    
+    // Montar URL de reset
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+    
+    // Enviar email
+    await sendPasswordResetEmail({
+      user: user.toJSON(),
+      resetToken,
+      resetUrl
+    });
+    
+    res.json({
+      message: 'Se o email existir em nossa base, você receberá instruções para recuperação de senha'
+    });
+  } catch (error) {
+    console.error('Erro ao solicitar reset de senha:', error);
+    next(error);
+  }
+};
+
+// POST /api/users/reset-password - Resetar senha com token
+export const resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { token, newPassword } = req.body;
+    
+    if (!token) {
+      res.status(400).json({
+        error: 'Token required',
+        message: 'Token é obrigatório'
+      });
+      return;
+    }
+    
+    if (!newPassword) {
+      res.status(400).json({
+        error: 'Password required',
+        message: 'Nova senha é obrigatória'
+      });
+      return;
+    }
+    
+    // Validar senha
+    if (newPassword.length < 6) {
+      res.status(400).json({
+        error: 'Invalid password',
+        message: 'Senha deve ter pelo menos 6 caracteres'
+      });
+      return;
+    }
+    
+    // Buscar token
+    const resetToken = await PasswordResetToken.findOne({ token });
+    
+    if (!resetToken) {
+      res.status(400).json({
+        error: 'Invalid token',
+        message: 'Token inválido ou expirado'
+      });
+      return;
+    }
+    
+    // Verificar se token é válido
+    if (!(resetToken as any).isValid()) {
+      res.status(400).json({
+        error: 'Invalid token',
+        message: 'Token inválido ou expirado'
+      });
+      return;
+    }
+    
+    // Buscar usuário
+    const user = await User.findById(resetToken.userId);
+    
+    if (!user || !user.ativo) {
+      res.status(404).json({
+        error: 'User not found',
+        message: 'Usuário não encontrado'
+      });
+      return;
+    }
+    
+    // Atualizar senha
+    user.password = newPassword;
+    await user.save();
+    
+    // Marcar token como usado
+    resetToken.used = true;
+    await resetToken.save();
+    
+    // Enviar email de confirmação
+    await sendPasswordChangedEmail(user.toJSON());
+    
+    res.json({
+      message: 'Senha alterada com sucesso'
+    });
+  } catch (error) {
+    console.error('Erro ao resetar senha:', error);
     next(error);
   }
 };
