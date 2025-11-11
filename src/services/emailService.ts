@@ -7,23 +7,33 @@ const createTransporter = () => {
   // Para desenvolvimento, use Ethereal Email (emails de teste)
   
   if (process.env.NODE_ENV === 'production') {
-    // Configuração para produção (hostgator)
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true', // true para 465, false para 587
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      },
-      tls: {
-        rejectUnauthorized: false // Aceita certificados self-signed (comum em shared hosting)
-      },
-      // Retry em caso de falha de DNS
-      pool: true,
-      maxConnections: 1,
-      maxMessages: 10
+        host: process.env.EMAIL_HOST,
+        port: 465,
+        // secure: true,
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+        }
     });
+    // Configuração para produção (hostgator)
+    // return nodemailer.createTransport({
+    //   host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    //   port: parseInt(process.env.SMTP_PORT || '587'),
+    //   secure: process.env.SMTP_SECURE === 'true', // true para 465, false para 587
+    //   auth: {
+    //     user: process.env.SMTP_USER,
+    //     pass: process.env.SMTP_PASS
+    //   },
+    //   tls: {
+    //     rejectUnauthorized: false // Aceita certificados self-signed (comum em shared hosting)
+    //   },
+    //   // Retry em caso de falha de DNS
+    //   pool: true,
+    //   maxConnections: 1,
+    //   maxMessages: 10
+    // });
+
   } else {    
     // Os emails podem ser visualizados em https://ethereal.email
     return nodemailer.createTransport({
