@@ -48,8 +48,7 @@ export function decrypt(encryptedText: string): string {
     
     // Se retornou string vazia, pode ser chave errada ou texto corrompido
     if (!text) {
-      console.error('Descriptografia resultou em string vazia - chave incorreta?');
-      console.error(`ENCRYPTION_KEY em uso: ${ENCRYPTION_KEY.substring(0, 10)}...`);
+      console.error('Descriptografia resultou em string vazia - chave incorreta ou dados corrompidos');
       return encryptedText; // Retorna o original ao invés de string vazia
     }
     

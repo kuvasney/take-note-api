@@ -129,18 +129,6 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// Debug endpoint (apenas para verificar env vars - remover depois)
-app.get('/debug/env', (_req, res) => {
-  res.json({
-    hasEncryptionKey: !!process.env.ENCRYPTION_KEY,
-    encryptionKeyLength: process.env.ENCRYPTION_KEY?.length || 0,
-    encryptionKeyPrefix: process.env.ENCRYPTION_KEY?.substring(0, 10) || 'N/A',
-    nodeEnv: process.env.NODE_ENV,
-    hasMongoUri: !!process.env.MONGODB_URI,
-    hasJwtSecret: !!process.env.JWT_SECRET
-  });
-});
-
 // API routes
 app.use('/api/notes', notesRoutes);
 app.use('/api/users', userRoutes);

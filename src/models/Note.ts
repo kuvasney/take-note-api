@@ -109,7 +109,10 @@ NoteSchema.index({ userId: 1, tags: 1 });
 NoteSchema.pre('save', function(next) {
   if (this.isModified('conteudo') && this.conteudo) {
     try {
-      this.conteudo = encrypt(this.conteudo);
+      // Só criptografa se ainda NÃO estiver criptografado
+      if (!this.conteudo.startsWith('U2FsdGVk')) {
+        this.conteudo = encrypt(this.conteudo);
+      }
     } catch (error) {
       console.error('Erro ao criptografar conteúdo:', error);
     }

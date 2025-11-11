@@ -523,11 +523,11 @@ export const getPublicNoteByToken = async (req: Request, res: Response, next: Ne
   try {
     const { shareToken } = req.params;
     
-    // Buscar nota pública pelo shareToken
+    // Buscar nota pública pelo shareToken (SEM .lean() para executar hooks de descriptografia)
     const note = await Note.findOne({ 
       shareToken,
       isPublic: true  // Deve ser pública
-    }).lean();
+    });
     
     if (!note) {
       res.status(404).json({
