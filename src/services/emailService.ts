@@ -11,11 +11,18 @@ const createTransporter = () => {
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true', // true para 465, false para outros
+      secure: process.env.SMTP_SECURE === 'true', // true para 465, false para 587
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
-      }
+      },
+      tls: {
+        rejectUnauthorized: false // Aceita certificados self-signed (comum em shared hosting)
+      },
+      // Retry em caso de falha de DNS
+      pool: true,
+      maxConnections: 1,
+      maxMessages: 10
     });
   } else {    
     // Os emails podem ser visualizados em https://ethereal.email
@@ -134,7 +141,7 @@ export const sendPasswordResetEmail = async (options: SendPasswordResetEmailOpti
     // Log para desenvolvimento
     if (process.env.NODE_ENV !== 'production') {
       console.log('📧 Email de recuperação enviado!');
-      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info as any));
     }
   } catch (error) {
     console.error('❌ Erro ao enviar email:', error);
@@ -372,7 +379,7 @@ export const sendCollaboratorAddedEmail = async (options: SendCollaboratorAddedE
     // Log para desenvolvimento
     if (process.env.NODE_ENV !== 'production') {
       console.log('📧 Email de colaboração enviado!');
-      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info as any));
     }
   } catch (error) {
     console.error('❌ Erro ao enviar email de colaboração:', error);
