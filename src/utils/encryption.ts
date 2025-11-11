@@ -35,11 +35,21 @@ export function decrypt(encryptedText: string): string {
   
   try {
     const decrypted = CryptoJS.AES.decrypt(encryptedText, ENCRYPTION_KEY);
-    const text = decrypted.toString(CryptoJS.enc.Utf8);
+    
+    // Tentar converter para string - AQUI pode dar erro se chave errada
+    let text = '';
+    try {
+      text = decrypted.toString(CryptoJS.enc.Utf8);
+    } catch (toStringError) {
+      console.error('Erro ao converter bytes descriptografados para UTF-8:', toStringError);
+      console.error('Possível causa: ENCRYPTION_KEY incorreta ou dados corrompidos');
+      return encryptedText; // Retorna o texto criptografado original
+    }
     
     // Se retornou string vazia, pode ser chave errada ou texto corrompido
     if (!text) {
       console.error('Descriptografia resultou em string vazia - chave incorreta?');
+      console.error(`ENCRYPTION_KEY em uso: ${ENCRYPTION_KEY.substring(0, 10)}...`);
       return encryptedText; // Retorna o original ao invés de string vazia
     }
     
