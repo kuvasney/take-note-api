@@ -120,13 +120,19 @@ NoteSchema.pre('save', function(next) {
 // Hook: Descriptografar conteúdo após buscar (para findOne, findById)
 NoteSchema.post('find', function(docs: any[]) {
   if (Array.isArray(docs)) {
-    docs.forEach(doc => {
+    docs.forEach((doc, index) => {
       if (doc.conteudo) {
         try {
+          const original = doc.conteudo;
           doc.conteudo = decrypt(doc.conteudo);
+          
+          // Se retornou o mesmo texto criptografado, houve falha
+          if (doc.conteudo === original && original.startsWith('U2FsdGVk')) {
+            console.warn(`⚠️  Nota ${doc._id} não pôde ser descriptografada (índice ${index})`);
+          }
         } catch (error) {
-          console.error('Erro ao descriptografar:', error);
-          // Mantém o conteúdo original se falhar (pode estar já descriptografado)
+          console.error(`❌ Erro ao descriptografar nota ${doc._id}:`, error);
+          // Mantém o conteúdo original se falhar
         }
       }
     });
@@ -136,9 +142,15 @@ NoteSchema.post('find', function(docs: any[]) {
 NoteSchema.post('findOne', function(doc: any) {
   if (doc && doc.conteudo) {
     try {
+      const original = doc.conteudo;
       doc.conteudo = decrypt(doc.conteudo);
+      
+      // Se retornou o mesmo texto criptografado, houve falha
+      if (doc.conteudo === original && original.startsWith('U2FsdGVk')) {
+        console.warn(`⚠️  Nota ${doc._id} não pôde ser descriptografada`);
+      }
     } catch (error) {
-      console.error('Erro ao descriptografar:', error);
+      console.error(`❌ Erro ao descriptografar nota ${doc._id}:`, error);
       // Mantém o conteúdo original se falhar
     }
   }

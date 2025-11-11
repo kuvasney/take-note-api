@@ -14,7 +14,8 @@
     "migrate:encrypt": "tsx scripts/encrypt-existing-notes.ts",
     "migrate:public-fields": "tsx scripts/add-public-fields.ts",
     "migrate:share-tokens": "tsx scripts/fix-missing-share-tokens.ts",
-    "check:passwords": "tsx scripts/check-password-hashes.ts"
+    "check:passwords": "tsx scripts/check-password-hashes.ts",
+    "fix:encryption": "tsx scripts/fix-encryption-issues.ts"
   },
   "keywords": [
     "notes",
