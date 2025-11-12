@@ -7,18 +7,9 @@ const createTransporter = () => {
   // Para desenvolvimento, use Ethereal Email (emails de teste)
   
   if (process.env.NODE_ENV === 'production') {
-    console.log('///////////////////// INÍCIO DOS CONSOLES DE TESTE')
-    console.log('SMTP_HOST', process.env.SMTP_HOST);
-    console.log('SMTP_PORT', process.env.SMTP_PORT);
-    console.log('SMTP_USER', process.env.SMTP_USER);
-    console.log('SECURE', process.env.SMTP_SECURE === 'true')
-    console.log('FIM DOS CONSOLES DE TESTE /////////////////////////////////////')
-
-    // Configuração para produção (hostgator)
+    // Configuração para Gmail
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true', // true para 465, false para outros
+      service: 'gmail',
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
