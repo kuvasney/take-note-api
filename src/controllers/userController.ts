@@ -243,7 +243,7 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction):
     }
     
     const users = await User.find(filter)
-      .sort({ dataCriacao: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
       .lean();

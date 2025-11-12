@@ -1,26 +1,26 @@
 export interface IReminder {
   id: string;
-  dataHora: string;
-  texto: string;
+  dateTime: string;
+  text: string;
 }
 
 export interface INote {
   id?: string;
-  userId: string;  // Dono da nota
-  order: number;   // Ordem de exibição (maior = mais acima)
-  titulo: string;
-  conteudo: string;
-  dataCriacao?: Date;
-  dataUltimaEdicao?: Date;
+  userId: string;  // Note owner
+  order: number;   // Display order (higher = top)
+  title: string;
+  content: string;
+  createdAt?: Date;
+  updatedAt?: Date;
   archived: boolean;
-  cor: string;
+  color: string;
   tags: string[];
   pinned: boolean;
-  lembretes: IReminder[];
-  colaboradores: string[];
-  isPublic: boolean;      // Se a nota é pública
-  shareToken?: string;    // Token único para compartilhamento seguro
+  reminders: IReminder[];
+  collaborators: string[];
+  isPublic: boolean;      // Whether the note is public
+  shareToken?: string;    // Unique token for secure sharing
 }
 
-export type CreateNoteDto = Omit<INote, 'id' | 'dataCriacao' | 'dataUltimaEdicao' | 'userId' | 'order'>;
+export type CreateNoteDto = Omit<INote, 'id' | 'createdAt' | 'updatedAt' | 'userId' | 'order'>;
 export type UpdateNoteDto = Partial<CreateNoteDto> & { id?: string };

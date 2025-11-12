@@ -9,71 +9,71 @@ export interface INoteDocument extends INote, Document {
 
 const ReminderSchema = new Schema<IReminder>({
   id: { type: String, required: true },
-  dataHora: { type: String, required: true },
-  texto: { type: String, required: true }
+  dateTime: { type: String, required: true },
+  text: { type: String, required: true }
 }, { _id: false });
 
 const NoteSchema = new Schema<INoteDocument>({
   userId: {
     type: String,
-    required: [true, 'ID do usuário é obrigatório'],
-    index: true  // Índice para melhor performance nas queries
+    required: [true, 'User ID is required'],
+    index: true  // Index for better query performance
   },
   order: {
     type: Number,
     required: true,
     default: 0,
-    index: true  // Índice para ordenação rápida
+    index: true  // Index for fast ordering
   },
-  titulo: { 
+  title: { 
     type: String, 
-    required: [true, 'Título é obrigatório'],
+    required: [true, 'Title is required'],
     trim: true,
-    maxlength: [200, 'Título não pode exceder 200 caracteres']
+    maxlength: [200, 'Title cannot exceed 200 characters']
   },
-  conteudo: { 
+  content: { 
     type: String, 
-    required: [true, 'Conteúdo é obrigatório'],
+    required: [true, 'Content is required'],
     trim: true
   },
   archived: { 
     type: Boolean, 
     default: false 
   },
-  cor: { 
+  color: { 
     type: String, 
     default: '#ffffff',
-    match: [/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Cor deve ser um código hexadecimal válido']
+    match: [/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Color must be a valid hexadecimal code']
   },
   tags: [{ 
     type: String, 
     trim: true,
-    maxlength: [50, 'Tag não pode exceder 50 caracteres']
+    maxlength: [50, 'Tag cannot exceed 50 characters']
   }],
   pinned: { 
     type: Boolean, 
     default: false 
   },
-  lembretes: [ReminderSchema],
-  colaboradores: [{ 
+  reminders: [ReminderSchema],
+  collaborators: [{ 
     type: String, 
     trim: true 
   }],
   isPublic: {
     type: Boolean,
     default: false,
-    index: true  // Índice para queries de notas públicas
+    index: true  // Index for public notes queries
   },
   shareToken: {
     type: String,
     unique: true,
-    sparse: true,  // Permite múltiplos documentos com null
-    index: true    // Índice para busca rápida por token
+    sparse: true,  // Allows multiple documents with null
+    index: true    // Index for fast token lookup
   }
 }, {
   timestamps: { 
-    createdAt: 'dataCriacao', 
-    updatedAt: 'dataUltimaEdicao' 
+    createdAt: 'createdAt', 
+    updatedAt: 'updatedAt' 
   },
   toJSON: {
     transform: (_doc, ret: any) => {
@@ -95,8 +95,8 @@ const NoteSchema = new Schema<INoteDocument>({
 
 // Index for search functionality
 NoteSchema.index({ 
-  titulo: 'text', 
-  conteudo: 'text',
+  title: 'text', 
+  content: 'text',
   tags: 'text'
 });
 
@@ -105,37 +105,37 @@ NoteSchema.index({ userId: 1, pinned: -1, order: -1 });
 NoteSchema.index({ userId: 1, archived: 1, order: -1 });
 NoteSchema.index({ userId: 1, tags: 1 });
 
-// Hook: Criptografar conteúdo antes de salvar
+// Hook: Encrypt content before saving
 NoteSchema.pre('save', function(next) {
-  if (this.isModified('conteudo') && this.conteudo) {
+  if (this.isModified('content') && this.content) {
     try {
-      // Só criptografa se ainda NÃO estiver criptografado
-      if (!this.conteudo.startsWith('U2FsdGVk')) {
-        this.conteudo = encrypt(this.conteudo);
+      // Only encrypt if NOT already encrypted
+      if (!this.content.startsWith('U2FsdGVk')) {
+        this.content = encrypt(this.content);
       }
     } catch (error) {
-      console.error('Erro ao criptografar conteúdo:', error);
+      console.error('Error encrypting content:', error);
     }
   }
   next();
 });
 
-// Hook: Descriptografar conteúdo após buscar (para findOne, findById)
+// Hook: Decrypt content after fetching (for findOne, findById)
 NoteSchema.post('find', function(docs: any[]) {
   if (Array.isArray(docs)) {
     docs.forEach((doc, index) => {
-      if (doc.conteudo) {
+      if (doc.content) {
         try {
-          const original = doc.conteudo;
-          doc.conteudo = decrypt(doc.conteudo);
+          const original = doc.content;
+          doc.content = decrypt(doc.content);
           
-          // Se retornou o mesmo texto criptografado, houve falha
-          if (doc.conteudo === original && original.startsWith('U2FsdGVk')) {
-            console.warn(`⚠️  Nota ${doc._id} não pôde ser descriptografada (índice ${index})`);
+          // If returned the same encrypted text, decryption failed
+          if (doc.content === original && original.startsWith('U2FsdGVk')) {
+            console.warn(`⚠️  Note ${doc._id} could not be decrypted (index ${index})`);
           }
         } catch (error) {
-          console.error(`❌ Erro ao descriptografar nota ${doc._id}:`, error);
-          // Mantém o conteúdo original se falhar
+          console.error(`❌ Error decrypting note ${doc._id}:`, error);
+          // Keep original content if decryption fails
         }
       }
     });
@@ -143,40 +143,40 @@ NoteSchema.post('find', function(docs: any[]) {
 });
 
 NoteSchema.post('findOne', function(doc: any) {
-  if (doc && doc.conteudo) {
+  if (doc && doc.content) {
     try {
-      const original = doc.conteudo;
-      doc.conteudo = decrypt(doc.conteudo);
+      const original = doc.content;
+      doc.content = decrypt(doc.content);
       
-      // Se retornou o mesmo texto criptografado, houve falha
-      if (doc.conteudo === original && original.startsWith('U2FsdGVk')) {
-        console.warn(`⚠️  Nota ${doc._id} não pôde ser descriptografada`);
+      // If returned the same encrypted text, decryption failed
+      if (doc.content === original && original.startsWith('U2FsdGVk')) {
+        console.warn(`⚠️  Note ${doc._id} could not be decrypted`);
       }
     } catch (error) {
-      console.error(`❌ Erro ao descriptografar nota ${doc._id}:`, error);
-      // Mantém o conteúdo original se falhar
+      console.error(`❌ Error decrypting note ${doc._id}:`, error);
+      // Keep original content if decryption fails
     }
   }
 });
 
-// Hook: Descriptografar após save
+// Hook: Decrypt after save
 NoteSchema.post('save', function(doc: any) {
-  if (doc && doc.conteudo) {
+  if (doc && doc.content) {
     try {
-      // Descriptografar temporariamente para retornar ao cliente
-      // O valor no DB permanece criptografado
-      const decrypted = decrypt(doc.conteudo);
-      doc.conteudo = decrypted;
+      // Temporarily decrypt to return to client
+      // Value in DB remains encrypted
+      const decrypted = decrypt(doc.content);
+      doc.content = decrypted;
     } catch (error) {
-      console.error('Erro ao descriptografar:', error);
-      // Mantém o conteúdo original se falhar
+      console.error('Error decrypting:', error);
+      // Keep original content if decryption fails
     }
   }
 });
 
-// Método estático para gerar shareToken único
+// Static method to generate unique shareToken
 NoteSchema.statics.generateShareToken = function(): string {
-  return crypto.randomBytes(16).toString('hex'); // 32 caracteres
+  return crypto.randomBytes(16).toString('hex'); // 32 characters
 };
 
 export const Note = mongoose.model<INoteDocument>('Note', NoteSchema);

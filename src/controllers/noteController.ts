@@ -13,11 +13,11 @@ export const getNotes = async (req: Request, res: Response, next: NextFunction):
     const userEmail = req.user?.email; // Email do usuário autenticado
     const userId = req.user?.userId;
     
-    // Filtro base: notas que o usuário criou OU onde ele é colaborador
+    // Base filter: notes created by user OR where they are a collaborator
     const filter: any = {
       $or: [
-        { userId },                        // Notas que o usuário criou
-        { colaboradores: userEmail }       // Notas onde ele é colaborador
+        { userId },                        // Notes created by user
+        { collaborators: userEmail }       // Notes where user is collaborator
       ]
     };
     
@@ -41,7 +41,7 @@ export const getNotes = async (req: Request, res: Response, next: NextFunction):
     
     // Sort: pinned notes first, then by order (desc), then by last edit date
     const notes = await Note.find(filter)
-      .sort({ pinned: -1, order: -1, dataUltimaEdicao: -1 })
+      .sort({ pinned: -1, order: -1, updatedAt: -1 })
       .skip(skip)
       .limit(limitNum)
       .lean();
@@ -111,7 +111,7 @@ export const searchNotes = async (req: Request, res: Response, next: NextFunctio
     const limitNum = Math.min(100, Math.max(1, limit));
     const skip = (pageNum - 1) * limitNum;
     
-    const sortCriteria: any = { pinned: -1, dataUltimaEdicao: -1 };
+    const sortCriteria: any = { pinned: -1, updatedAt: -1 };
     
     // If text search, include relevance score
     if (search) {
@@ -149,13 +149,13 @@ export const getNoteById = async (req: Request, res: Response, next: NextFunctio
     const userEmail = req.user?.email;
     const userId = req.user?.userId;
     
-    // Primeiro tenta buscar nota onde usuário tem acesso OU nota é pública
+    // First try to find note where user has access OR note is public
     const note = await Note.findOne({ 
       _id: id,
       $or: [
         { userId },
-        { colaboradores: userEmail },
-        { isPublic: true }  // Permite acesso se nota for pública
+        { collaborators: userEmail },
+        { isPublic: true }  // Allow access if note is public
       ]
     }).lean();
     
@@ -217,16 +217,16 @@ export const updateNote = async (req: Request, res: Response, next: NextFunction
       delete (updateData as any).id;
     }
     
-    // Atualizar se usuário é dono OU colaborador
+    // Update if user is owner OR collaborator
     const updatedNote = await Note.findOneAndUpdate(
       { 
         _id: id,
         $or: [
           { userId },
-          { colaboradores: userEmail }
+          { collaborators: userEmail }
         ]
       },
-      { ...updateData, dataUltimaEdicao: new Date() },
+      { ...updateData, updatedAt: new Date() },
       { 
         new: true, 
         runValidators: true,
@@ -265,7 +265,7 @@ export const togglePin = async (req: Request, res: Response, next: NextFunction)
     }
     
     note.pinned = !note.pinned;
-    note.dataUltimaEdicao = new Date();
+    note.updatedAt = new Date();
     
     const updatedNote = await note.save();
     
@@ -292,7 +292,7 @@ export const toggleArchive = async (req: Request, res: Response, next: NextFunct
     }
     
     note.archived = !note.archived;
-    note.dataUltimaEdicao = new Date();
+    note.updatedAt = new Date();
     
     const updatedNote = await note.save();
     
@@ -308,7 +308,7 @@ export const deleteNote = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const userId = req.user?.userId;
     
-    // APENAS o dono pode deletar (colaboradores NÃO podem)
+    // ONLY owner can delete (collaborators CANNOT)
     const deletedNote = await Note.findOneAndDelete({ _id: id, userId }).lean();
     
     if (!deletedNote) {
@@ -417,26 +417,26 @@ export const addCollaborator = async (req: Request, res: Response, next: NextFun
       return;
     }
 
-    // Adicionar colaborador se não existir
-    if (!note.colaboradores.includes(email)) {
-      note.colaboradores.push(email);
-      note.dataUltimaEdicao = new Date();
+    // Add collaborator if not already added
+    if (!note.collaborators.includes(email)) {
+      note.collaborators.push(email);
+      note.updatedAt = new Date();
       const updatedNote = await note.save();
       
-      // Enviar email para o colaborador
+      // Send email to collaborator
       try {
-        // Buscar dados do dono da nota para incluir o nome no email
+        // Fetch note owner data to include name in email
         const owner = await User.findById(req.user?.userId);
         
         await sendCollaboratorAddedEmail({
           collaboratorEmail: email,
-          ownerName: owner?.username || 'Um usuário',
-          noteTitle: note.titulo,
+          ownerName: owner?.username || 'A user',
+          noteTitle: note.title,
           noteId: String(note._id)
         });
       } catch (emailError) {
-        console.error('Erro ao enviar email de colaboração:', emailError);
-        // Continua mesmo se o email falhar
+        console.error('Error sending collaboration email:', emailError);
+        // Continue even if email fails
       }
       
       res.json({
@@ -497,11 +497,11 @@ export const removeCollaborator = async (req: Request, res: Response, next: Next
       return;
     }
 
-    // Remover colaborador
-    const index = note.colaboradores.indexOf(email);
+    // Remove collaborator
+    const index = note.collaborators.indexOf(email);
     if (index > -1) {
-      note.colaboradores.splice(index, 1);
-      note.dataUltimaEdicao = new Date();
+      note.collaborators.splice(index, 1);
+      note.updatedAt = new Date();
       const updatedNote = await note.save();
       res.json({
         message: 'Collaborator removed successfully',
@@ -518,15 +518,15 @@ export const removeCollaborator = async (req: Request, res: Response, next: Next
   }
 };
 
-// GET /api/notes/public/:shareToken - Acesso público via token (SEM autenticação)
+// GET /api/notes/public/:shareToken - Public access via token (NO authentication required)
 export const getPublicNoteByToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { shareToken } = req.params;
     
-    // Buscar nota pública pelo shareToken (SEM .lean() para executar hooks de descriptografia)
+    // Find public note by shareToken (WITHOUT .lean() to execute decryption hooks)
     const note = await Note.findOne({ 
       shareToken,
-      isPublic: true  // Deve ser pública
+      isPublic: true  // Must be public
     });
     
     if (!note) {
@@ -537,15 +537,15 @@ export const getPublicNoteByToken = async (req: Request, res: Response, next: Ne
       return;
     }
     
-    // Retornar apenas campos públicos (sem dados sensíveis)
+    // Return only public fields (no sensitive data)
     const publicNote = {
       id: note.id,
-      titulo: note.titulo,
-      conteudo: note.conteudo,
-      cor: note.cor,
+      title: note.title,
+      content: note.content,
+      color: note.color,
       tags: note.tags,
-      dataCriacao: note.dataCriacao,
-      dataUltimaEdicao: note.dataUltimaEdicao,
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt,
       isPublic: note.isPublic,
       shareToken: note.shareToken
     };
@@ -573,15 +573,15 @@ export const togglePublicNote = async (req: Request, res: Response, next: NextFu
       return;
     }
     
-    // Alternar status público
+    // Toggle public status
     note.isPublic = !note.isPublic;
     
-    // Se estiver tornando pública e não tiver shareToken, gerar um
+    // If making public and no shareToken exists, generate one
     if (note.isPublic && !note.shareToken) {
       note.shareToken = (Note as any).generateShareToken();
     }
     
-    note.dataUltimaEdicao = new Date();
+    note.updatedAt = new Date();
     const updatedNote = await note.save();
     
     res.json({
@@ -613,9 +613,9 @@ export const regenerateShareToken = async (req: Request, res: Response, next: Ne
       return;
     }
     
-    // Gerar novo token
+    // Generate new token
     note.shareToken = (Note as any).generateShareToken();
-    note.dataUltimaEdicao = new Date();
+    note.updatedAt = new Date();
     const updatedNote = await note.save();
     
     res.json({
