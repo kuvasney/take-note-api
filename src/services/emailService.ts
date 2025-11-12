@@ -5,6 +5,12 @@ import { IUser } from '../types/user.js';
 const createTransporter = () => {
   // Em produção, use um serviço real como SendGrid, AWS SES, etc.
   // Para desenvolvimento, use Ethereal Email (emails de teste)
+  console.log('Creating email transporter...');
+  console.log("node env", process.env.NODE_ENV);
+  console.log("smtp user", process.env.SMTP_USER);
+  console.log("smtp pass", process.env.SMTP_PASS);
+
+
   
   if (process.env.NODE_ENV === 'production') {
     // Configuração para Gmail
